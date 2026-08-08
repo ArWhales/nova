@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول | حيتان العرب</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  .auth-shell{
+    min-height:calc(100vh - 200px);
+    display:flex;align-items:center;justify-content:center;
+    padding:60px 24px;
+  }
+  .auth-card{
+    width:100%;max-width:420px;
+    background:var(--bg-panel);border:1px solid var(--line);border-radius:20px;
+    padding:38px 34px;
+  }
+  .auth-tabs{display:flex;gap:8px;margin-bottom:26px;background:var(--bg-panel-2);border-radius:12px;padding:4px;}
+  .auth-tab{flex:1;text-align:center;padding:10px;border-radius:9px;cursor:pointer;font-family:'Cairo',sans-serif;font-weight:600;font-size:14px;color:var(--text-dim);}
+  .auth-tab.active{background:var(--teal);color:#03110f;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;color:var(--text-dim);margin-bottom:6px;}
+  .field input{
+    width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--line);
+    background:var(--bg-deep);color:var(--text);font-size:14px;font-family:inherit;
+  }
+  .field input:focus{outline:none;border-color:var(--teal);}
+  .auth-submit{width:100%;margin-top:6px;}
+  .auth-note{
+    font-size:12.5px;color:var(--text-dim);text-align:center;margin-top:18px;line-height:1.8;
+  }
+  .demo-banner{
+    background:rgba(212,162,76,0.1);border:1px solid rgba(212,162,76,0.35);
+    color:var(--gold);font-size:12.5px;padding:10px 14px;border-radius:10px;
+    margin-bottom:20px;text-align:center;
+  }
+  .msg{font-size:13.5px;padding:10px 12px;border-radius:8px;margin-bottom:16px;display:none;}
+  .msg.error{background:rgba(229,107,107,0.1);border:1px solid var(--down);color:var(--down);display:block;}
+  .msg.success{background:rgba(61,220,151,0.1);border:1px solid var(--up);color:var(--up);display:block;}
+</style>
+</head>
+<body>
+  <header class="site">
+    <nav>
+      <div class="brand"><svg class="ic" style="width:1.3em;height:1.3em;vertical-align:-0.15em;"><use href="#ic-whale"/></svg> حيتان <span class="dot">العرب</span></div>
+      <div class="nav-links" id="navLinks">
+        <a href="index.html" data-i18n="nav_home">الرئيسية</a>
+        <a href="course.html" data-i18n="nav_tracks">المسارات التعليمية</a>
+      </div>
+      <button class="nav-hamburger" id="navHamburger" aria-label="القائمة" style="margin-inline-start:auto;">
+        <span></span><span></span><span></span>
+      </button>
+    </nav>
+  </header>
+
+  <button class="lang-fab" id="langToggle"><svg class="ic" style="width:1em;height:1em;"><use href="#ic-globe"/></svg> EN</button>
+
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div id="demoBanner" class="demo-banner" style="display:none;">
+        <svg class="ic" style="width:1em;height:1em;vertical-align:-0.15em;"><use href="#ic-info"/></svg> <span data-i18n="demo_banner">وضع تجريبي — لم يتم ربط قاعدة بيانات بعد. راجع ملف <code>config.js</code> لتفعيل حسابات حقيقية.</span>
+      </div>
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabLogin" onclick="switchTab('login')" data-i18n="tab_login">تسجيل الدخول</div>
+        <div class="auth-tab" id="tabSignup" onclick="switchTab('signup')" data-i18n="tab_signup">إنشاء حساب</div>
+      </div>
+
+      <div id="msgBox" class="msg"></div>
+
+      <form id="authForm">
+        <div class="field" id="usernameField" style="display:none;">
+          <label data-i18n="label_username">اسم المستخدم</label>
+          <input type="text" id="username" placeholder="مثال: ahmed_crypto" data-i18n-placeholder="ph_username">
+        </div>
+        <div class="field">
+          <label data-i18n="label_email">البريد الإلكتروني</label>
+          <input type="email" id="email" required placeholder="you@example.com">
+        </div>
+        <div class="field">
+          <label data-i18n="label_password">كلمة المرور</label>
+          <input type="password" id="password" required placeholder="••••••••" minlength="6">
+        </div>
+        <button type="submit" class="btn-primary auth-submit" id="submitBtn" data-i18n="tab_login">تسجيل الدخول</button>
+      </form>
+
+      <p class="auth-note" id="verifyNote" style="display:none;" data-i18n="verify_note">
+        تم إرسال رابط تحقق إلى بريدك الإلكتروني. افتح بريدك واضغط الرابط لتفعيل حسابك قبل الدخول للمسارات التعليمية.
+      </p>
+    </div>
+  </div>
+
+<script src="visuals.js"></script>
+<script src="config.js"></script>
+<script>
+document.getElementById('navHamburger').addEventListener('click', () => {
+  document.getElementById('navLinks').classList.toggle('mobile-open');
+});
+
+const I18N_AUTH = {
+  ar: {
+    nav_home:"الرئيسية", nav_tracks:"المسارات التعليمية",
+    demo_banner:'وضع تجريبي — لم يتم ربط قاعدة بيانات بعد. راجع ملف <code>config.js</code> لتفعيل حسابات حقيقية.',
+    tab_login:"تسجيل الدخول", tab_signup:"إنشاء حساب",
+    label_username:"اسم المستخدم", label_email:"البريد الإلكتروني", label_password:"كلمة المرور",
+    verify_note:"تم إرسال رابط تحقق إلى بريدك الإلكتروني. افتح بريدك واضغط الرابط لتفعيل حسابك قبل الدخول للمسارات التعليمية.",
+    msg_demo_success:"تم تسجيل الدخول (وضع تجريبي — لا يوجد تحقق حقيقي من البريد بعد).",
+    msg_signup_success:"تم إنشاء الحساب بنجاح.",
+    msg_bad_creds:"البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+    msg_generic_error:"حدث خطأ، حاول مرة أخرى.",
+  },
+  en: {
+    nav_home:"Home", nav_tracks:"Learning Tracks",
+    demo_banner:'Demo mode — no database connected yet. See <code>config.js</code> to enable real accounts.',
+    tab_login:"Log In", tab_signup:"Create Account",
+    label_username:"Username", label_email:"Email", label_password:"Password",
+    verify_note:"A verification link was sent to your email. Open it and click the link to activate your account before accessing the learning tracks.",
+    msg_demo_success:"Logged in (demo mode — no real email verification yet).",
+    msg_signup_success:"Account created successfully.",
+    msg_bad_creds:"Incorrect email or password.",
+    msg_generic_error:"Something went wrong, please try again.",
+  }
+};
+let currentLang = localStorage.getItem('aw_lang') || 'ar';
+
+function applyAuthLang(){
+  const t = I18N_AUTH[currentLang];
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+  document.body.classList.toggle('lang-en', currentLang === 'en');
+  document.getElementById('langToggle').innerHTML = '<svg class="ic" style="width:1em;height:1em;"><use href="#ic-globe"/></svg> ' + (currentLang === 'ar' ? 'EN' : 'AR');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if(t[key]) el.innerHTML = t[key];
+  });
+  document.getElementById('submitBtn').textContent = mode === 'login' ? t.tab_login : t.tab_signup;
+}
+document.getElementById('langToggle').addEventListener('click', () => {
+  currentLang = currentLang === 'ar' ? 'en' : 'ar';
+  localStorage.setItem('aw_lang', currentLang);
+  applyAuthLang();
+});
+</script>
+<script>
+let mode = "login";
+
+function switchTab(m){
+  mode = m;
+  const t = I18N_AUTH[currentLang];
+  document.getElementById('tabLogin').classList.toggle('active', m === 'login');
+  document.getElementById('tabSignup').classList.toggle('active', m === 'signup');
+  document.getElementById('submitBtn').textContent = m === 'login' ? t.tab_login : t.tab_signup;
+  document.getElementById('usernameField').style.display = m === 'signup' ? 'block' : 'none';
+  document.getElementById('msgBox').style.display = 'none';
+  document.getElementById('verifyNote').style.display = 'none';
+}
+
+if(!IS_BACKEND_CONFIGURED){
+  document.getElementById('demoBanner').style.display = 'block';
+}
+
+document.getElementById('authForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const t = I18N_AUTH[currentLang];
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const usernameInput = document.getElementById('username').value.trim();
+  const msgBox = document.getElementById('msgBox');
+  msgBox.style.display = 'none';
+
+  if(!IS_BACKEND_CONFIGURED){
+    // Demo mode: keep a simple email -> username directory so returning users
+    // (logging in, not signing up) still get their username back.
+    const directory = JSON.parse(localStorage.getItem('aw_username_directory') || '{}');
+    let username;
+    if(mode === 'signup'){
+      username = usernameInput || email.split('@')[0];
+      directory[email] = username;
+      localStorage.setItem('aw_username_directory', JSON.stringify(directory));
+    } else {
+      username = directory[email] || email.split('@')[0];
+    }
+    localStorage.setItem('aw_demo_session', JSON.stringify({email, username, ts: Date.now()}));
+    msgBox.className = 'msg success';
+    msgBox.textContent = t.msg_demo_success;
+    msgBox.style.display = 'block';
+    setTimeout(() => window.location.href = 'course.html', 900);
+    return;
+  }
+
+  try{
+    if(mode === 'signup'){
+      const { data, error } = await supabaseClient.auth.signUp({
+        email, password,
+        options: { data: { username: usernameInput || email.split('@')[0] } }
+      });
+      if(error) throw error;
+      document.getElementById('verifyNote').style.display = 'block';
+      msgBox.className = 'msg success';
+      msgBox.textContent = t.msg_signup_success;
+      msgBox.style.display = 'block';
+    } else {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+      if(!data.user.email_confirmed_at){
+        document.getElementById('verifyNote').style.display = 'block';
+        return;
+      }
+      window.location.href = 'course.html';
+    }
+  }catch(err){
+    msgBox.className = 'msg error';
+    msgBox.textContent = err.message === 'Invalid login credentials'
+      ? t.msg_bad_creds
+      : (err.message || t.msg_generic_error);
+    msgBox.style.display = 'block';
+  }
+});
+
+applyAuthLang();
+</script>
+</body>
+</html>
